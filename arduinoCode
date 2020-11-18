@@ -1,0 +1,144 @@
+ // Define Trig and Echo pin:
+#include <LiquidCrystal.h>
+LiquidCrystal lcd(8,7,5,6,3,2);
+#define trigPin 9
+#define echoPin A2
+#define ledPin A4
+#define sensorPin A5
+#include <SPI.h>
+#include <SD.h>
+File dataFile; 
+//File dataFile1; 
+
+int sensorState = 0; 
+int lastState = 0;
+// Define variables:
+long duration;
+int distance;
+int libraryCount;
+int sanitizeNumber;
+int percentUsed;
+
+void setup() {
+  lcd.begin(16,2);
+    lcd.clear();
+
+  // Define inputs and outputs:
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(ledPin,OUTPUT);
+  pinMode(sensorPin,INPUT);
+  digitalWrite(sensorPin,HIGH);
+  //Begin Serial communication at a baudrate of 9600:
+  Serial.begin(9600);
+initSD();
+
+}
+void loop() {
+    sensorState = digitalRead(sensorPin);
+
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Entering");
+  lcd.setCursor(10,0);
+  lcd.print(libraryCount);
+  lcd.setCursor(0,1);
+  lcd.print("Sanitized");
+  lcd.setCursor(10,1);
+  lcd.print(sanitizeNumber);
+
+  //Break wire code
+  if (sensorState == LOW) {     
+    // turn LED on:
+    digitalWrite(ledPin, HIGH);  
+  } 
+  else {
+    // turn LED off:
+    digitalWrite(ledPin, LOW); 
+  }
+  
+  if (sensorState && lastState) {
+    Serial.println("Unbroken");
+  } 
+  if (!sensorState && !lastState) {
+    Serial.println("Broken");
+    sanitizeNumber++;
+    delay(2000);
+    lastState=0;
+    String sanitizeNumber;
+writeSD(sanitizeNumber);
+  }
+lastState = sensorState;
+
+
+
+  //ultrasonic code
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  // Read the echoPin, pulseIn() returns the duration (length of the pulse) in microseconds:
+  duration = pulseIn(echoPin, HIGH);
+  // Calculate the distance:
+  distance= duration*0.034/2;
+  // Print the distance on the Serial Monitor
+  Serial.print("Distance = ");
+  Serial.print(distance);
+  Serial.println(" cm");
+  //if(distance == 365.76){ //12feet
+  if(distance >= 200.4 && distance <= 365.04){
+    libraryCount++;
+    delay(15);
+    Serial.print("Daily Total: ");
+    Serial.print(libraryCount);
+    Serial.print(" /// ");
+    delay(100);
+String libraryCount;
+//writeSD1(libraryCount);
+
+  }
+calculatePercent(); 
+
+
+}
+
+void calculatePercent(){
+percentUsed = ((sanitizeNumber/libraryCount)*100);
+Serial.println(percentUsed); 
+}
+void initSD(){
+  Serial.println("Initializing.....");
+  if(!SD.begin(4)){
+    Serial.println("failed");
+    return;
+  }
+  Serial.println("done");
+}
+void writeSD(String val){
+dataFile = SD.open("data.txt",FILE_WRITE);
+if(dataFile){
+  Serial.println("Writing data.txt");
+  Serial.print(val);
+  dataFile.println(val);
+  dataFile.close();
+  Serial.println("....done");
+}
+else{
+  Serial.println("failed");  
+}
+}
+/*void writeSD1(String val){
+dataFile1 = SD.open("data1.txt",FILE_WRITE);
+if(dataFile1){
+  Serial.println("Writing data1.txt");
+  Serial.print(val);
+  dataFile1.println(val);
+  dataFile1.close();
+  Serial.println("....done");
+}
+else{
+  Serial.println("failed");  
+}
+}
+*/
